@@ -1,9 +1,7 @@
 import express from 'express';
 import { v2 } from '@google-cloud/translate';
 import * as path from 'path';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import knex from './database';
 
 const { PORT } = process.env;
 if (PORT == null) {
@@ -34,6 +32,29 @@ app.get('/translate/:lang', async (req, res) => {
     res.send(`${result[0]}\n`);
   } else {
     res.status(400).send('Failed to translate.');
+  }
+});
+
+app.get('/words', async (_req, res) => {
+  const words = await knex
+    .select('*')
+    .from('words')
+    .orderBy('id')
+    .catch((err: Error) => {
+      console.error(err);
+      return undefined;
+    });
+
+  if (words != null) {
+    res.json({
+      status: 200,
+      data: words,
+    });
+  } else {
+    res.json({
+      status: 400,
+      data: words,
+    });
   }
 });
 

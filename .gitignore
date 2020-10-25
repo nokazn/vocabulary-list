@@ -3,3 +3,4 @@ dist
 *.log
 .env
 vocabulary-list*.json
+cloud_sql_proxy
