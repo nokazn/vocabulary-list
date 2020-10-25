@@ -16,6 +16,7 @@
   "author": "nokazn",
   "license": "MIT",
   "dependencies": {
+    "@google-cloud/translate": "^6.0.3",
     "dotenv": "^8.2.0",
     "express": "^4.17.1"
   },
