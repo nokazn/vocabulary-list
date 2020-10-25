@@ -1,4 +1,5 @@
-import http, { IncomingMessage, ServerResponse } from 'http';
+import express from 'express';
+import * as path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -12,12 +13,20 @@ if (PORT == null) {
   throw new Error('Environmental variables are not set.');
 }
 
-const listener = (_req: IncomingMessage, res: ServerResponse) => {
-  res.writeHead(200);
-  res.end('Hello World!');
-};
+const app = express();
 
-const server = http.createServer(listener);
-console.log(`The http server is listening at port: ${PORT} 🚀`);
+app.use(express.static(path.resolve(__dirname, '../public')));
+console.log(path.resolve(__dirname, '../public'));
 
-server.listen(parseInt(PORT, 10));
+app.get('/hello', (req, res) => {
+  const word = req.query.w;
+  res.send(word != null ? `You entered "${word}"!` : 'No words are entered!');
+});
+
+app.all('*', (_, res) => {
+  res.send(404);
+});
+
+app.listen(parseInt(PORT, 10), () => {
+  console.log(`The http server is listening at port: ${PORT} 🚀`);
+});
