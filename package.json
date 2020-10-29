@@ -11,6 +11,7 @@
     "dev": "ts-node -r dotenv/config src/index.ts",
     "dev:watch": "ts-node-dev -r dotenv/config --respawn src/index.ts",
     "build": "rimraf dist/ && tsc -p ./tsconfig.json",
+    "build:hosting": "rm -rf public && parcel build -d public src/public/index.html",
     "start": "npm run build && node ./dist/index.js"
   },
   "author": "nokazn",
@@ -33,6 +34,7 @@
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-import": "^2.20.0",
     "eslint-plugin-jest": "^24.0.2",
+    "firebase-tools": "^8.14.1",
     "jest": "^26.2.1",
     "prettier": "^2.0.5",
     "rimraf": "^3.0.2",

@@ -1,0 +1,26 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/words/{,/**}",
+        "run": {
+          "serviceId": "vocabulary-list-app",
+          "region": "asia-northeast1"
+        }
+      },
+      {
+        "source": "/translate/**",
+        "run": {
+          "serviceId": "vocabulary-list-app",
+          "region": "asia-northeast1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -4,3 +4,6 @@ dist
 .env
 vocabulary-list*.json
 cloud_sql_proxy
+/public
+/.cache
+/.firebase
