@@ -1,135 +1,117 @@
-# typescript-starter
+## usage
 
-## setting environmental variables
-
-```bash
-$ echo PORT=3000 > .env
+```Dockerfile
+FROM node:12-alpine
+ENV PORT=3000
+WORKDIR /usr/src/app
+COPY package.json yarn.lock ./
+RUN yarn --production
+COPY . .
+CMD ["yarn", "start"]
 ```
 
-## scripts
-
-### format
-
 ```bash
-$ yarn format
+$ docker build . -t vocabulary-list-app
+$ docker run -it -p 3000:3000 vocabulary-list-app
 ```
 
-### lint
+GCP プロジェクトを作成しておく。`gcloud` コマンドが手元にインストールされてない場合は適宜[インストール](https://cloud.google.com/sdk/docs/install)する。
 
 ```bash
-$ yarn lint
-
-# auto fix
-$ yarn lint:fix
+$ PROJECT_ID=vocabulary-list-293610
+$ gcloud builds submit --tag=gcr.io/$PROJECT_ID/app --project=$PROJECT_ID
 ```
 
-### dev
+Cloud Builds でコンテナをビルドする。数分でビルドが完了し、プロジェクトページの Container Registry に `app` というコンテナイメージが登録されている。
+
+Cound Run のページで `Create Service` を押下する。
+
+Cloud Build で CD の設定をしておくと master ブランチにプッシュする度にデプロイが走るようになる。
 
 ```bash
-$ yarn dev
-
-# hot reload
-$ yarn dev:watch
+$ yarn add @google-cloud/translate
 ```
 
-### test
+## Cloud SQL for PostgreSQL に接続する
+
+管理画面からインスタンスを適当に作成し、Ｃ loud SQL に接続するためのユーザーアカウントも作成する。
+
+ローカル環境からは [Cloud SQL Proxy](https://cloud.google.com/sql/docs/postgres/quickstart-proxy-test) で接続する。
 
 ```bash
-$ yarn test
+$ ./cloud_sql_proxy -instances=vocabulary-list-293610:asia-northeast1:vocabulary-list=tcp:3306
 ```
 
-### build
+pgAdmin でデータベースに接続し、適当にクエリを実行する。
+
+```sql
+CREATE TABLE words.words (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `ja` VARCHAR(200) NOT NULL,
+  `en` VARCHAR(200) NOT NULL,
+  `es` VARCHAR(200) NOT NULL,
+  `fr` VARCHAR(200) NOT NULL,
+  `done` BOOLEAN NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`));
+)
+
+INSERT INTO words (id, ja, en, es, fr, done) VALUES (1, '今日', 'today', 'hoy', 'anjourd''hui', false);
+INSERT INTO words (id, ja, en, es, fr, done) VALUES (2, '明日', 'tomorrow', 'mañana', 'demain', false);
+```
+
+`/words` にアクセスすると、追加したデータが表示されている。
+
+Cloud Run から接続するには、Cloud SQL Proxy を通して UNIX ソケットを用いる。
+環境変数を設定する。
+
+```
+DB_USER=xxxxx
+DB_PASSWORD=xxxxx
+DB_NAME=words
+DB_PORT=3306
+DB_HOST=/cloudsq/<Project ID>:<Region>:<Cloud SQL instance name>
+```
+
+## 静的ファイルを Firebase Hosting で配信
 
 ```bash
-$ yarn build
+$ npx firebase init --project vocabulary-list-293610
+#...
+? For which GitHub repository would you like to set up a GitHub workflow? nokazn/vocabulary-list? nokazn/vocabulary-list
+#...
 ```
-
-### start
-
-```bash
-$ yarn start
-$ curl localhost:8000
-Hello World!
-```
-
-## eslint
-
-eslint 関連の各種プラグインなどをインストールする。
-
-```bash
-$ yarn add -D @typescript-eslint/eslint-plugin \
-  @typescript-eslint/parser \
-  eslint \
-  eslint-config-airbnb-base \
-  eslint-plugin-import
-```
-
-## prettier
-
-prettier 関連の各種プラグインなどをインストールする。
-
-```bash
-$ yarn add -D prettier \
-  eslint-config-prettier
-```
-
-eslint との競合を防ぐため、`.eslintrc.js`を修正する。
 
 ```diff
-// .eslintrc.js
- extends: [
-+ "prettier",
-+ "prettier/@typescript-eslint",
- ]
++ "build:hosting": "rimraf dist/ && tsc -p ./tsconfig.json"
 ```
 
-`.prettierrc.json` に適宜設定する。
-
-```json:.prettierrc.json
-{
-  "printWidth": 100,
-  "singleQuote": true,
-  "jsxSingleQuote": true,
-  "trailingComma": "all"
-}
-```
-
-## jest
-
-```bash
-$ yarn add -D jest ts-jest eslint-plugin-jest @types/jest
-```
-
-```js:jest.config.js
-module.exports = {
-  roots: ['.'],
-  transform: {
-    '^.+\\.ts$': 'ts-jest',
-  },
-  globals: {
-    'ts-jest': {
-      tsConfig: './tsconfig.json',
-    },
-  },
-};
-```
-
-ESLint rules for Jest
+特定のパスへのアクセスは Cloud Run に向ける。
 
 ```diff
-// .eslintrc.js
- env: {
-   es6: true,
-   node: true,
-+  'jest/globals': true,
- },
-
- // ...
-
-- plugins: ['@typescript-eslint'],
-+ plugins: ['@typescript-eslint','jest'],
++ "rewrites": [
++   {
++     "source": "/words/{,/**}",
++     "run": {
++       "serviceId": "vocabulary-list-app",
++       "region": "asia-northeast1"
++     }
++   },
++   {
++     "source": "/translate/**",
++     "run": {
++       "serviceId": "vocabulary-list-app",
++       "region": "asia-northeast1"
++     }
++   },
++   {
++     "source": "**",
++     "destination": "/index.html"
++   }
++ ]
 ```
 
-## License
+https://firebase.google.com/docs/hosting/cloud-run?hl=ja#direct_requests_to_container
 
-MIT
+## 参考
+
+https://ishida-it.com/blog/post/2020-07-23-cloudrun-nodejs-1/
